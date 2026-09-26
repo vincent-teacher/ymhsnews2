@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>新聞剪輯資料庫</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f2ea; --paper:#fffdf8; --ink:#1c1b18; --muted:#6d695f; --line:#e2ddd0;
+  --accent:#a8231a; --accent-soft:#f6e1dd; --chip:#ebe6d9; --mark:#ffe58a;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141412; --paper:#1d1c19; --ink:#edeae2; --muted:#9d998e; --line:#33312b;
+    --accent:#f07a6c; --accent-soft:#3b2320; --chip:#2a2824; --mark:#6b5a12;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.6;font-size:16px}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+
+/* 報頭 */
+.mast{border-bottom:3px double var(--ink);padding:28px 0 14px;text-align:center}
+.mast .kicker{font-size:13px;letter-spacing:.3em;color:var(--muted)}
+.mast h1{font-family:"Noto Serif TC",serif;font-weight:900;font-size:clamp(32px,6vw,52px);margin:4px 0 6px;letter-spacing:.08em}
+.mast .meta{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:10px}
+.mast .meta b{color:var(--ink)}
+
+/* 控制列 */
+.controls{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 0 10px;border-bottom:1px solid var(--line)}
+.search{display:flex;gap:8px}
+.search-box{flex:1;position:relative}
+.search-box input{width:100%;padding:12px 40px 12px 42px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);outline:none;font-size:16px}
+.search-box input:focus{border-color:var(--accent)}
+.search-box svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;padding:4px 8px;display:none}
+.btn{border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:10px;padding:0 16px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{opacity:.88}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:wait}
+.row2{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:thin;padding-bottom:2px}
+.chip{border:0;background:var(--chip);border-radius:999px;padding:5px 13px;cursor:pointer;white-space:nowrap;font-size:14px}
+.chip small{color:var(--muted);margin-left:4px}
+.chip.on{background:var(--accent);color:#fff}
+.chip.on small{color:rgba(255,255,255,.8)}
+select{border:1.5px solid var(--line);background:var(--paper);border-radius:8px;padding:5px 8px;font-size:14px}
+
+.notice{margin-top:10px;background:var(--accent-soft);border-radius:8px;padding:8px 12px;font-size:14px;display:none;align-items:center;justify-content:space-between;gap:10px}
+.notice button{border:0;background:none;color:var(--accent);cursor:pointer;font-weight:700;text-decoration:underline}
+.status{font-size:14px;color:var(--muted);margin:14px 0 4px}
+
+/* 列表 */
+.month{font-family:"Noto Serif TC",serif;font-weight:900;font-size:19px;margin:26px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline}
+.month span{font-family:"Noto Sans TC",sans-serif;font-size:13px;font-weight:400;color:var(--muted)}
+.item{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:center;padding:12px 10px;border-bottom:1px solid var(--line);border-radius:6px;cursor:pointer}
+.item:hover{background:var(--paper);box-shadow:var(--shadow)}
+.date{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
+.date b{display:block;color:var(--accent);font-size:20px;font-family:"Noto Serif TC",serif;line-height:1.1}
+.title{font-weight:500;font-size:16.5px;word-break:break-word}
+.sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.acts{display:flex;gap:6px}
+.icon-btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--muted);text-decoration:none}
+.icon-btn:hover{color:var(--accent);border-color:var(--accent)}
+mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
+.empty{text-align:center;color:var(--muted);padding:60px 0}
+.more{display:block;margin:24px auto 40px;padding:10px 28px;height:auto}
+.sentinel{height:1px}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:30px 0 40px}
+.demo{background:#fff4c2;color:#5c4a00;text-align:center;font-size:14px;padding:6px 16px}
+
+/* 預覽視窗 */
+dialog{border:0;padding:0;border-radius:14px;width:min(1000px,94vw);height:min(92vh,1100px);background:var(--paper);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}
+dialog::backdrop{background:rgba(20,18,15,.6)}
+.dlg{display:flex;flex-direction:column;height:100%}
+.dlg-head{display:flex;gap:10px;align-items:center;padding:10px 12px 10px 18px;border-bottom:1px solid var(--line)}
+.dlg-head .t{flex:1;min-width:0}
+.dlg-head .t div{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlg-head .t small{color:var(--muted)}
+.dlg iframe{flex:1;border:0;width:100%;background:#525659}
+.dlg-nav{display:flex;gap:6px}
+
+@media (max-width:640px){
+  .item{grid-template-columns:70px 1fr;gap:10px}
+  .acts{display:none}
+  .date b{font-size:17px}
+  .btn{padding:0 12px}
+  dialog{width:100vw;height:100vh;max-width:100vw;max-height:100vh;border-radius:0}
+}
+</style>
+</head>
+<body>
+
+<div id="demoBar" class="demo" hidden>目前為示範資料。部署到 GAS 或設定 API_URL 後就會顯示真實的新聞剪輯。</div>
+
+<header class="mast wrap">
+  <div class="kicker">NEWS CLIPPINGS ARCHIVE</div>
+  <h1 id="siteTitle">新聞剪輯資料庫</h1>
+  <div class="meta">
+    <span>收錄 <b id="total">—</b> 篇</span>
+    <span>年度 <b id="yearSpan">—</b></span>
+    <span>索引更新 <b id="updated">—</b></span>
+  </div>
+</header>
+
+<section class="controls">
+  <div class="wrap">
+    <form class="search" id="searchForm" autocomplete="off">
+      <label class="search-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="輸入標題關鍵字或日期（如 2024-03）…" aria-label="搜尋">
+        <button type="button" class="clear-x" id="clearQ" aria-label="清除">×</button>
+      </label>
+      <button class="btn" id="ftBtn" type="submit" title="搜尋 PDF 內文">搜內文</button>
+    </form>
+    <div class="row2">
+      <div class="chips" id="years"></div>
+      <select id="sort" aria-label="排序">
+        <option value="desc">新 → 舊</option>
+        <option value="asc">舊 → 新</option>
+        <option value="title">依標題</option>
+      </select>
+    </div>
+    <div class="notice" id="ftNotice"><span id="ftText"></span><button type="button" id="ftClear">清除內文搜尋</button></div>
+  </div>
+</section>
+
+<main class="wrap">
+  <div class="status" id="status">載入中…</div>
+  <div id="list"></div>
+  <div class="sentinel" id="sentinel"></div>
+  <button class="btn ghost more" id="moreBtn" hidden>載入更多</button>
+</main>
+
+<footer class="wrap">點選任一則新聞即可線上預覽 PDF・資料來源：Google 雲端硬碟</footer>
+
+<dialog id="dlg">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div class="t"><div id="dTitle"></div><small id="dMeta"></small></div>
+      <div class="dlg-nav">
+        <button class="icon-btn" id="dPrev" title="上一則">‹</button>
+        <button class="icon-btn" id="dNext" title="下一則">›</button>
+        <a class="icon-btn" id="dOpen" target="_blank" rel="noopener" title="在雲端硬碟開啟">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M21 3l-9 9M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg>
+        </a>
+        <a class="icon-btn" id="dDown" target="_blank" rel="noopener" title="下載">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
+        </a>
+        <button class="icon-btn" id="dClose" title="關閉">✕</button>
+      </div>
+    </div>
+    <iframe id="dFrame" title="PDF 預覽" allow="autoplay"></iframe>
+  </div>
+</dialog>
+
+<script>
+/*__INJECT__*/
+
+/* 用於 GitHub Pages 等外部網站時：填入 GAS 網頁應用程式網址（結尾為 /exec）
+   在 GAS 內部執行時不必填寫 */
+const API_URL = 'https://script.google.com/macros/s/AKfycbzLq_oYQ1iS8RDoCTWTDESyJafomgq3miD1aD9aoP0YRU5iT-fvRj4vP9vXhrRI_-fWEQ/exec';
+
+const PAGE = 80;
+const state = { items: [], q: '', year: 'all', sort: 'desc', ftIds: null, ftQuery: '', filtered: [], shown: 0, lastMonth: '', current: -1 };
+const $ = s => document.querySelector(s);
+
+init();
+
+async function init() {
+  try {
+    let data = window.__DATA__;
+    if (!data && API_URL) {
+      const r = await fetch(API_URL + '?action=index');
+      data = await r.json();
+    }
+    if (!data) { data = demoData(); $('#demoBar').hidden = false; }
+    if (data.error) throw new Error(data.error);
+
+    state.items = (data.items || []).map(it => ({ ...it, _s: (it.t + ' ' + it.d + ' ' + it.n + ' ' + it.y).toLowerCase() }));
+    if (data.title) { $('#siteTitle').textContent = data.title; document.title = data.title; }
+    $('#total').textContent = state.items.length.toLocaleString();
+    $('#updated').textContent = data.updated ? fmtTime(data.updated) : '—';
+    renderYears();
+    bind();
+    apply();
+  } catch (err) {
+    $('#status').textContent = '⚠️ 無法載入資料：' + err.message;
+  }
+}
+
+function bind() {
+  let timer;
+  $('#q').addEventListener('input', e => {
+    clearTimeout(timer);
+    $('#clearQ').style.display = e.target.value ? 'block' : 'none';
+    timer = setTimeout(() => { state.q = e.target.value.trim(); clearFt(false); apply(); }, 180);
+  });
+  $('#clearQ').onclick = () => { $('#q').value = ''; $('#clearQ').style.display = 'none'; state.q = ''; clearFt(false); apply(); $('#q').focus(); };
+  $('#searchForm').addEventListener('submit', e => { e.preventDefault(); fullText(); });
+  $('#sort').onchange = e => { state.sort = e.target.value; apply(); };
+  $('#ftClear').onclick = () => { clearFt(true); };
+  $('#moreBtn').onclick = renderMore;
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => { if (es[0].isIntersecting && state.shown < state.filtered.length) renderMore(); }, { rootMargin: '600px' })
+      .observe($('#sentinel'));
+  }
+
+  const dlg = $('#dlg');
+  $('#dClose').onclick = () => dlg.close();
+  dlg.addEventListener('close', () => { $('#dFrame').src = 'about:blank'; });
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+  $('#dPrev').onclick = () => openAt(state.current - 1);
+  $('#dNext').onclick = () => openAt(state.current + 1);
+  document.addEventListener('keydown', e => {
+    if (!dlg.open) return;
+    if (e.key === 'ArrowLeft') openAt(state.current - 1);
+    if (e.key === 'ArrowRight') openAt(state.current + 1);
+  });
+}
+
+function renderYears() {
+  const counts = {};
+  state.items.forEach(i => { counts[i.y] = (counts[i.y] || 0) + 1; });
+  const years = Object.keys(counts).sort((a, b) => b.localeCompare(a, 'zh-Hant', { numeric: true }));
+  $('#yearSpan').textContent = years.length ? (years.length > 1 ? years[years.length - 1] + '–' + years[0] : years[0]) : '—';
+  const box = $('#years');
+  box.innerHTML = '';
+  const mk = (val, label, n) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (state.year === val ? ' on' : '');
+    b.innerHTML = esc(label) + '<small>' + n + '</small>';
+    b.onclick = () => { state.year = val; renderYears(); apply(); };
+    box.appendChild(b);
+  };
+  mk('all', '全部', state.items.length);
+  years.forEach(y => mk(y, y, counts[y]));
+}
+
+function terms() { return state.q.toLowerCase().split(/\s+/).filter(Boolean); }
+
+function apply() {
+  const ts = terms();
+  let list = state.items;
+  if (state.year !== 'all') list = list.filter(i => i.y === state.year);
+  if (state.ftIds) list = list.filter(i => state.ftIds.has(i.id));
+  else if (ts.length) list = list.filter(i => ts.every(t => i._s.includes(t)));
+
+  list = list.slice();
+  if (state.sort === 'title') list.sort((a, b) => a.t.localeCompare(b.t, 'zh-Hant'));
+  else {
+    const dir = state.sort === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      if (!a.d && b.d) return 1;
+      if (a.d && !b.d) return -1;
+      return dir * (a.d || '').localeCompare(b.d || '') || a.t.localeCompare(b.t, 'zh-Hant');
+    });
+  }
+
+  state.filtered = list;
+  state.shown = 0;
+  state.lastMonth = '';
+  $('#list').innerHTML = '';
+
+  const bits = [];
+  if (state.year !== 'all') bits.push(state.year);
+  if (state.ftIds) bits.push('內文含「' + state.ftQuery + '」');
+  else if (state.q) bits.push('標題含「' + state.q + '」');
+  $('#status').textContent = (bits.length ? bits.join('・') + '：' : '') + '共 ' + list.length.toLocaleString() + ' 篇';
+
+  if (!list.length) {
+    $('#list').innerHTML = '<div class="empty">找不到符合的新聞' + (state.q && !state.ftIds ? '。<br>可以按「搜內文」搜尋 PDF 內容。' : '。') + '</div>';
+  }
+  renderMore();
+}
+
+function renderMore() {
+  const box = $('#list');
+  const ts = state.ftIds ? [] : terms();
+  const end = Math.min(state.shown + PAGE, state.filtered.length);
+  const frag = document.createDocumentFragment();
+  const monthCount = state.sort === 'title' ? null : countMonths();
+
+  for (let k = state.shown; k < end; k++) {
+    const it = state.filtered[k];
+    if (monthCount) {
+      const mKey = it.d ? it.d.slice(0, 7) : '';
+      if (mKey !== state.lastMonth || k === 0) {
+        state.lastMonth = mKey;
+        const h = document.createElement('div');
+        h.className = 'month';
+        h.innerHTML = (mKey ? mKey.slice(0, 4) + ' 年 ' + (+mKey.slice(5)) + ' 月' : '日期不明') + '<span>' + monthCount[mKey] + ' 篇</span>';
+        frag.appendChild(h);
+      }
+    }
+    const row = document.createElement('div');
+    row.className = 'item';
+    row.tabIndex = 0;
+    const day = it.d ? String(+it.d.slice(8)) : '—';
+    const md = it.d ? it.d.slice(0, 4) + '.' + it.d.slice(5, 7) : '';
+    row.innerHTML =
+      '<div class="date"><b>' + day + '</b>' + md + '</div>' +
+      '<div><div class="title">' + hl(it.t, ts) + '</div><div class="sub">' + esc(it.y) + (it.s ? '・' + size(it.s) : '') + '</div></div>' +
+      '<div class="acts">' +
+        '<a class="icon-btn" title="在雲端硬碟開啟" target="_blank" rel="noopener" href="' + viewUrl(it.id) + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M21 3l-9 9M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></a>' +
+      '</div>';
+    row.addEventListener('click', e => { if (!e.target.closest('a')) openAt(k); });
+    row.addEventListener('keydown', e => { if (e.key === 'Enter') openAt(k); });
+    frag.appendChild(row);
+  }
+  box.appendChild(frag);
+  state.shown = end;
+  $('#moreBtn').hidden = state.shown >= state.filtered.length;
+}
+
+function countMonths() {
+  if (state._mcFor === state.filtered) return state._mc;
+  const c = {};
+  state.filtered.forEach(i => { const k = i.d ? i.d.slice(0, 7) : ''; c[k] = (c[k] || 0) + 1; });
+  state._mcFor = state.filtered; state._mc = c;
+  return c;
+}
+
+function openAt(k) {
+  if (k < 0 || k >= state.filtered.length) return;
+  state.current = k;
+  const it = state.filtered[k];
+  $('#dTitle').textContent = it.t;
+  $('#dMeta').textContent = (it.d || '日期不明') + '・' + it.y + '　（' + (k + 1) + ' / ' + state.filtered.length + '）';
+  $('#dFrame').src = 'https://drive.google.com/file/d/' + it.id + '/preview';
+  $('#dOpen').href = viewUrl(it.id);
+  $('#dDown').href = 'https://drive.google.com/uc?export=download&id=' + it.id;
+  $('#dPrev').disabled = k === 0;
+  $('#dNext').disabled = k === state.filtered.length - 1;
+  const dlg = $('#dlg');
+  if (!dlg.open) dlg.showModal();
+}
+
+/* ---------- PDF 內文搜尋 ---------- */
+async function fullText() {
+  const q = $('#q').value.trim();
+  if (!q) { $('#q').focus(); return; }
+  const btn = $('#ftBtn');
+  btn.disabled = true; btn.textContent = '搜尋中…';
+  try {
+    const ids = await serverSearch(q);
+    if (ids && ids.error) throw new Error(ids.error);
+    state.ftIds = new Set(ids);
+    state.ftQuery = q;
+    $('#ftText').textContent = '內文搜尋「' + q + '」：共 ' + ids.length + ' 篇 PDF 符合';
+    $('#ftNotice').style.display = 'flex';
+    apply();
+  } catch (err) {
+    alert('內文搜尋失敗：' + (err.message || err));
+  } finally {
+    btn.disabled = false; btn.textContent = '搜內文';
+  }
+}
+
+function serverSearch(q) {
+  return new Promise((resolve, reject) => {
+    if (window.google && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).searchFullText(q);
+    } else if (API_URL) {
+      fetch(API_URL + '?action=search&q=' + encodeURIComponent(q)).then(r => r.json()).then(resolve, reject);
+    } else {
+      // 示範模式：用標題模擬
+      const t = q.toLowerCase();
+      resolve(state.items.filter(i => i._s.includes(t)).map(i => i.id));
+    }
+  });
+}
+
+function clearFt(reapply) {
+  if (!state.ftIds) return;
+  state.ftIds = null; state.ftQuery = '';
+  $('#ftNotice').style.display = 'none';
+  if (reapply) apply();
+}
+
+/* ---------- 工具 ---------- */
+function viewUrl(id) { return 'https://drive.google.com/file/d/' + id + '/view'; }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function hl(text, ts) {
+  let html = esc(text);
+  ts.forEach(t => {
+    const e = esc(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (e) html = html.replace(new RegExp('(' + e + ')(?![^<]*>)', 'gi'), '<mark>$1</mark>');
+  });
+  return html;
+}
+function size(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+function demoData() {
+  const titles = ['校園推動減塑行動 學生自製環保餐具', '桃園高中生科展獲全國佳作', 'AI 進入課堂 教師研習爆滿', '圖書館夜間開放 閱讀風氣升溫', '在地農產走進營養午餐', '高中生國際交流 體驗多元文化', '颱風來襲 各校停課資訊', '社團成果展 熱鬧登場', '學測放榜 多元入學管道說明', '永續校園計畫啟動 種下百棵樹'];
+  const items = [];
+  let n = 0;
+  ['2024', '2025', '2026'].forEach(y => {
+    for (let m = 1; m <= 12; m++) {
+      if (y === '2026' && m > 9) break;
+      const k = 2 + ((m * 7 + +y) % 3);
+      for (let j = 0; j < k; j++) {
+        const d = 1 + ((m * 5 + j * 9) % 28);
+        const date = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const t = titles[(n++) % titles.length];
+        items.push({ id: 'demo' + n, n: date.replace(/-/g, '') + t + '.pdf', t: t, d: date, y: y, s: 200000 + n * 7919 % 900000 });
+      }
+    }
+  });
+  return { title: '新聞剪輯資料庫', updated: new Date().toISOString(), items: items };
+}
+</script>
+</body>
+</html>
